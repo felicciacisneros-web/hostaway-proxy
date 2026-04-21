@@ -17,18 +17,28 @@ export default async function handler(req, res) {
 
   const url = `https://api.hostaway.com/${targetPath}${queryString ? "?" + queryString : ""}`;
 
+  let bodyContent = undefined;
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    if (typeof req.body === "string") {
+      bodyContent = req.body;
+    } else if (req.body && typeof req.body === "object") {
+      // Si es el request de accessTokens, convertir a URLSearchParams
+      if (targetPath.includes("accessTokens")) {
+        bodyContent = new URLSearchParams(req.body).toString();
+      } else {
+        bodyContent = JSON.stringify(req.body);
+      }
+    }
+  }
+
   try {
     const response = await fetch(url, {
       method: req.method,
       headers: {
-        "Content-Type": req.headers["content-type"] || "application/json",
-        ...(req.headers["authorization"]
-          ? { Authorization: req.headers["authorization"] }
-          : {}),
+        "Content-Type": req.headers["content-type"] || "application/x-www-form-urlencoded",
+        ...(req.headers["authorization"] ? { Authorization: req.headers["authorization"] } : {}),
       },
-      ...(req.method !== "GET" && req.body
-        ? { body: typeof req.body === "string" ? req.body : JSON.stringify(req.body) }
-        : {}),
+      body: bodyContent,
     });
 
     const contentType = response.headers.get("content-type") || "";
